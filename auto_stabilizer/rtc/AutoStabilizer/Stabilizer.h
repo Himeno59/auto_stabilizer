@@ -22,6 +22,9 @@ public:
   double landing2SupportTransitionTime = 0.1; // [s]. 0より大きい
   double support2SwingTransitionTime = 0.2; // [s]. 0より大きい
 
+  // 逆動力学を解く際のddqの制限
+  double ddq_limit = 25.0;
+
   void init(const GaitParam& gaitParam, cnoid::BodyPtr& actRobotTqc){
     for(int i=0;i<NUM_LEGS;i++){
       cnoid::JointPath jointPath(actRobotTqc->rootLink(), actRobotTqc->link(gaitParam.eeParentLink[i]));
@@ -70,6 +73,16 @@ protected:
                   std::vector<cnoid::Vector6>& o_tgtEEWrench /* 要素数EndEffector数. generate座標系. EndEffector origin*/) const;
   bool calcTorque(double dt, const GaitParam& gaitParam, const std::vector<cnoid::Vector6>& tgtEEWrench /* 要素数EndEffector数. generate座標系. EndEffector origin*/,
                   cnoid::BodyPtr& actRobotTqc, std::vector<cpp_filters::TwoPointInterpolator<double> >& o_stServoPGainPercentage, std::vector<cpp_filters::TwoPointInterpolator<double> >& o_stServoDGainPercentage) const;
+  
+  double applyMedianFilter(int i, double val, std::vector<std::vector<double>>& median_filter_window) const;
+  
+private:
+  // median filter
+  double max_window_size = 5;
+  mutable std::vector<std::vector<double> > acc_median_filter_window = std::vector<std::vector<double> >(45);
+  mutable std::vector<std::vector<double> > vel_median_filter_window = std::vector<std::vector<double> >(45);
+
 };
+
 
 #endif

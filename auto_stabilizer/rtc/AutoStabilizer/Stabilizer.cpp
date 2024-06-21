@@ -284,6 +284,24 @@ bool Stabilizer::calcWrench(const GaitParam& gaitParam, const cnoid::Vector3& tg
   return true;
 }
 
+double Stabilizer::applyMedianFilter(int i, double val, std::vector<std::vector<double>>& median_filter_window) const{
+  median_filter_window[i].push_back(val);
+
+  if (median_filter_window[i].size() > max_window_size) {
+    median_filter_window[i].erase(median_filter_window[i].begin());
+  }
+  
+  std::vector<double> sorted_data = median_filter_window[i];
+  std::sort(sorted_data.begin(), sorted_data.end());
+  size_t size = sorted_data.size();
+  size_t median_index = size / 2;
+  if (size % 2 == 0) {
+    return (sorted_data[median_index - 1] + sorted_data[median_index + 1]) / 2.0;
+  } else {
+    return sorted_data[median_index];
+  }
+}
+
 bool Stabilizer::calcTorque(double dt, const GaitParam& gaitParam, const std::vector<cnoid::Vector6>& tgtEEWrench /* 要素数EndEffector数. generate座標系. EndEffector origin*/,
                             cnoid::BodyPtr& actRobotTqc, std::vector<cpp_filters::TwoPointInterpolator<double> >& o_stServoPGainPercentage, std::vector<cpp_filters::TwoPointInterpolator<double> >& o_stServoDGainPercentage) const{
   // 速度・加速度を考慮しない重力補償
@@ -301,18 +319,21 @@ bool Stabilizer::calcTorque(double dt, const GaitParam& gaitParam, const std::ve
     actRobotTqc->joint(i)->q() = gaitParam.actRobot->joint(i)->q();
     
     // actRobotTqc->joint(i)->dq() = 0.0;
+    // double current_dq = gaitParam.actRobot->joint(i)->dq();
+    // actRobotTqc->joint(i)->dq() = applyMedianFilter(i, current_dq, vel_median_filter_window);
     actRobotTqc->joint(i)->dq() = gaitParam.actRobot->joint(i)->dq();
     
     // actRobotTqc->joint(i)->ddq() = 0.0;    
     if (initialize) {
       actRobotTqc->joint(i)->ddq() = 0.0;
     } else {
+      // double current_ddq = (gaitParam.genRobot->joint(i)->dq() - prev_dq[i]) / dt;
+      // actRobotTqc->joint(i)->ddq() = applyMedianFilter(i, current_ddq, acc_median_filter_window);
       actRobotTqc->joint(i)->ddq() = (gaitParam.genRobot->joint(i)->dq() - prev_dq[i]) / dt;
     }
+    
     prev_dq[i] = gaitParam.genRobot->joint(i)->dq();
     
-    // std::cerr << "dq:" << actRobotTqc->joint(i)->dq() << std::endl;
-    // std::cerr << "ddq:" << actRobotTqc->joint(i)->ddq() << std::endl;
   }
   initialize = false;
   actRobotTqc->calcForwardKinematics(true, true); // 引数は速度と加速度を更新するかどうか
