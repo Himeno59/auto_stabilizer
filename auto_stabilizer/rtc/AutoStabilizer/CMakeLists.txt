@@ -44,6 +44,7 @@ add_library(AutoStabilizer SHARED
   LegManualController.cpp
   CmdVelGenerator.cpp
   MathUtil.cpp
+  SmoothingFilter.cpp
   )
 target_link_libraries(AutoStabilizer
   ${catkin_LIBRARIES}

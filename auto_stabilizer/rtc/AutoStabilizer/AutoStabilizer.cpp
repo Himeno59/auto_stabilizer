@@ -341,6 +341,9 @@ RTC::ReturnCode_t AutoStabilizer::onInitialize(){
   // init FullbodyIKSolver
   this->fullbodyIKSolver_.init(this->gaitParam_.genRobot, this->gaitParam_);
 
+  // init Smoothing Filter
+  this->smoothingFilter_.init(this->gaitParam_.genRobot); // 出力は特にない?
+
   // initialize parameters
   this->loop_ = 0;
 
@@ -585,7 +588,7 @@ bool AutoStabilizer::readInPortData(const double& dt, const GaitParam& gaitParam
 }
 
 // static function
-bool AutoStabilizer::execAutoStabilizer(const AutoStabilizer::ControlMode& mode, GaitParam& gaitParam, double dt, const FootStepGenerator& footStepGenerator, const LegCoordsGenerator& legCoordsGenerator, const RefToGenFrameConverter& refToGenFrameConverter, const ActToGenFrameConverter& actToGenFrameConverter, const ImpedanceController& impedanceController, const Stabilizer& stabilizer, const ExternalForceHandler& externalForceHandler, const FullbodyIKSolver& fullbodyIKSolver,const LegManualController& legManualController, const CmdVelGenerator& cmdVelGenerator) {
+bool AutoStabilizer::execAutoStabilizer(const AutoStabilizer::ControlMode& mode, GaitParam& gaitParam, double dt, const FootStepGenerator& footStepGenerator, const LegCoordsGenerator& legCoordsGenerator, const RefToGenFrameConverter& refToGenFrameConverter, const ActToGenFrameConverter& actToGenFrameConverter, const ImpedanceController& impedanceController, const Stabilizer& stabilizer, const ExternalForceHandler& externalForceHandler, const FullbodyIKSolver& fullbodyIKSolver,const LegManualController& legManualController, const CmdVelGenerator& cmdVelGenerator, SmoothingFilter& smoothingFilter) {
   if(mode.isSyncToABCInit()){ // startAutoBalancer直後の初回. gaitParamのリセット
     refToGenFrameConverter.initGenRobot(gaitParam,
                                         gaitParam.genRobot, gaitParam.footMidCoords, gaitParam.genCogVel, gaitParam.genCogAcc);
@@ -643,7 +646,6 @@ bool AutoStabilizer::execAutoStabilizer(const AutoStabilizer::ControlMode& mode,
     else gaitParam.abcEETargetPose[i] = gaitParam.icEETargetPose[i];
   }
   
-
   // Stabilizer
   if(mode.isSyncToStopSTInit()){ // stopST直後の初回
     gaitParam.stOffsetRootRpy.setGoal(cnoid::Vector3::Zero(),mode.remainTime());
@@ -659,6 +661,11 @@ bool AutoStabilizer::execAutoStabilizer(const AutoStabilizer::ControlMode& mode,
   // genRobotの値が更新されると考えて良い
   fullbodyIKSolver.solveFullbodyIK(dt, gaitParam,// input
                                    gaitParam.genRobot); // output
+
+  // Filter
+  // genRobotのqとdqにfilteerをかける
+  smoothingFilter.applyAverageFilter(gaitParam.genRobot);  // for q
+  smoothingFilter.applyMedianFilter(gaitParam.genRobot);   // for dq
 
   return true;
 }
@@ -712,7 +719,7 @@ bool AutoStabilizer::writeOutPortData(AutoStabilizer::Ports& ports, const AutoSt
         if(std::isfinite(value)) ports.m_dq_.data[i] = value;
         else std::cerr << "m_dq is not finite!" << std::endl;
       }else if(mode.isSyncToABC() || mode.isSyncToIdle()){
-        double ratio = idleToAbcTransitionInterpolator.value(); // 間に合っていないときの補間??
+        double ratio = idleToAbcTransitionInterpolator.value(); // 補間??
         double value = gaitParam.refRobotRaw->joint(i)->dq() * (1.0 - ratio) + gaitParam.genRobot->joint(i)->dq() * ratio;
         if(std::isfinite(value)) ports.m_dq_.data[i] = value;
         else std::cerr << "m_dq is not finite!" << std::endl;
@@ -1040,7 +1047,7 @@ RTC::ReturnCode_t AutoStabilizer::onExecute(RTC::UniqueId ec_id){
       this->impedanceController_.reset();
       this->fullbodyIKSolver_.reset();
     }
-    AutoStabilizer::execAutoStabilizer(this->mode_, this->gaitParam_, this->dt_, this->footStepGenerator_, this->legCoordsGenerator_, this->refToGenFrameConverter_, this->actToGenFrameConverter_, this->impedanceController_, this->stabilizer_,this->externalForceHandler_, this->fullbodyIKSolver_, this->legManualController_, this->cmdVelGenerator_);
+    AutoStabilizer::execAutoStabilizer(this->mode_, this->gaitParam_, this->dt_, this->footStepGenerator_, this->legCoordsGenerator_, this->refToGenFrameConverter_, this->actToGenFrameConverter_, this->impedanceController_, this->stabilizer_,this->externalForceHandler_, this->fullbodyIKSolver_, this->legManualController_, this->cmdVelGenerator_, this->smoothingFilter_);
   }
 
   AutoStabilizer::writeOutPortData(this->ports_, this->mode_, this->idleToAbcTransitionInterpolator_, this->dt_, this->gaitParam_);
