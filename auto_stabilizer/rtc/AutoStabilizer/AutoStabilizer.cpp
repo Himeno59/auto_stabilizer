@@ -659,9 +659,58 @@ bool AutoStabilizer::execAutoStabilizer(const AutoStabilizer::ControlMode& mode,
 
   // FullbodyIKSolver
   // genRobotの値が更新されると考えて良い
-  fullbodyIKSolver.solveFullbodyIK(dt, gaitParam,// input
+  fullbodyIKSolver.solveFullbodyIK(dt, gaitParam, // input
                                    gaitParam.genRobot); // output
-
+  
+  // // genRobotのq、dqをなめらかな値になるように修正する
+  // static std::vector<double> prev_q(gaitParam.genRobot->numJoints(), 0.0);
+  // static std::vector<double> prev_dq(gaitParam.genRobot->numJoints(), 0.0);
+  // static std::vector<double> prev_ddq(gaitParam.genRobot->numJoints(), 0.0);
+  // static std::vector<int> fix_flag(gaitParam.genRobot->numJoints(), 0);
+  // static bool initialize = true;
+  // static std::vector<int> count(gaitParam.genRobot->numJoints(), 0);
+  // static double ddq_limit = 30.0;
+  // if(mode.isSyncToABC()){
+  //   // auto-balancer modeに遷移中は何もしない
+  // } else {
+  //   for(int i=0;i<gaitParam.genRobot->numJoints();i++) {
+  //     double ddq = (gaitParam.genRobot->joint(i)->dq() - prev_dq[i]) / dt;
+  //     if (initialize) {
+  // 	// prev_を初期化
+  //     } else {
+  // 	if (fabs(ddq) > ddq_limit && (fix_flag[i] == 0)) {
+  // 	  std::cout << "-------------------------------" << std::endl;
+  // 	  ddq = prev_ddq[i];
+  // 	  // dq
+  // 	  gaitParam.genRobot->joint(i)->dq() = prev_dq[i] + ddq*dt;
+  // 	  // q
+  // 	  gaitParam.genRobot->joint(i)->q() = prev_q[i] + prev_dq[i]*dt;
+  // 	  count[i] += 1;
+  // 	  if (count[i] == 3) {
+  // 	    fix_flag[i] = 1;
+  // 	    std::cout << "i: " << i << std::endl;
+  // 	    std::cout << "flag change: 0->1" << std::endl;
+  // 	  }
+  // 	} else {
+  // 	  std::cout << "i: " << i << std::endl;
+  // 	  std::cout << "flag change: 1->0" << std::endl;
+  // 	  fix_flag[i] = 0;
+  // 	  count[i] = 0;
+	  
+  // 	}
+	
+  //     }
+      
+  //     prev_q[i] = gaitParam.genRobot->joint(i)->q();
+  //     prev_dq[i] = gaitParam.genRobot->joint(i)->dq();
+  //     prev_ddq[i] = ddq;
+  //   }
+    
+  //   initialize = false;
+    
+  //   // std::cout << "<---------------------------->" << std::endl;
+  // }
+  
   // Filter
   // genRobotのqとdqにfilteerをかける
   smoothingFilter.applyAverageFilter(gaitParam.genRobot);  // for q

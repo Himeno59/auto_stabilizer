@@ -319,8 +319,8 @@ bool Stabilizer::calcTorque(double dt, const GaitParam& gaitParam, const std::ve
     actRobotTqc->joint(i)->q() = gaitParam.actRobot->joint(i)->q();
     
     // actRobotTqc->joint(i)->dq() = 0.0;
-    double current_dq = gaitParam.actRobot->joint(i)->dq();
-    actRobotTqc->joint(i)->dq() = applyMedianFilter(i, current_dq, vel_median_filter_window);
+    // double current_dq = gaitParam.actRobot->joint(i)->dq();
+    // actRobotTqc->joint(i)->dq() = applyMedianFilter(i, current_dq, vel_median_filter_window);
     // actRobotTqc->joint(i)->dq() = gaitParam.actRobot->joint(i)->dq();
     
     // actRobotTqc->joint(i)->ddq() = 0.0;    
