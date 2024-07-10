@@ -420,15 +420,6 @@ bool AutoStabilizer::readInPortData(const double& dt, const GaitParam& gaitParam
         // refEEPoseRaw[i].setGoal(pose, 0.3); // 0.3秒で補間
 	refEEPoseRaw[i] = pose; // ここで代入
         ports.refEEPoseLastUpdateTime_ = ports.m_qRef_.tm;
-
-	// std::cout << "[ast] read ok" << std::endl;
-	// std::cout << "[EEPose]" << std::endl;
-	// std::cout << "position.x: " << ports.m_refEEPose_[2].data.position.x << std::endl;
-	// std::cout << "position.y: " << ports.m_refEEPose_[2].data.position.y << std::endl;
-	// std::cout << "porision.z: " << ports.m_refEEPose_[2].data.position.z << std::endl;
-	// std::cout << "orientation.r: " << ports.m_refEEPose_[2].data.orientation.r << std::endl;
-	// std::cout << "orientation.p: " << ports.m_refEEPose_[2].data.orientation.p << std::endl;
-	// std::cout << "orientation.y: " << ports.m_refEEPose_[2].data.orientation.y << std::endl;
       } else {
         std::cerr << "m_refEEPose is not finite!" << std::endl;
       }
