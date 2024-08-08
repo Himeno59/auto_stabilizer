@@ -67,8 +67,21 @@ bool FullbodyIKSolver::solveFullbodyIK(double dt, const GaitParam& gaitParam,
 
   // EEF
   for(int i=0;i<gaitParam.eeName.size();i++){
-    this->ikEEPositionConstraint[i]->A_link() = genRobot->link(gaitParam.eeParentLink[i]);
-    this->ikEEPositionConstraint[i]->A_localpos() = gaitParam.eeLocalT[i];
+    if(i==2){
+      this->ikEEPositionConstraint[i]->A_link() = genRobot->link("RARM_JOINT6");
+      // this->ikEEPositionConstraint[i]->A_localpos() = cnoid::Position::Identity();
+      this->ikEEPositionConstraint[i]->A_localpos().translation() = cnoid::Vector3::Zero();
+      this->ikEEPositionConstraint[i]->A_localpos().linear() = gaitParam.eeLocalT[i].linear();
+    } else if (i==3) {
+      this->ikEEPositionConstraint[i]->A_link() = genRobot->link("LARM_JOINT6");
+      // this->ikEEPositionConstraint[i]->A_localpos() = cnoid::Position::Identity();
+      this->ikEEPositionConstraint[i]->A_localpos().translation() = cnoid::Vector3::Zero();
+      this->ikEEPositionConstraint[i]->A_localpos().linear() = gaitParam.eeLocalT[i].linear();
+    } else {
+      this->ikEEPositionConstraint[i]->A_link() = genRobot->link(gaitParam.eeParentLink[i]);
+      this->ikEEPositionConstraint[i]->A_localpos() = gaitParam.eeLocalT[i];
+    }
+      
     this->ikEEPositionConstraint[i]->B_link() = nullptr;
     this->ikEEPositionConstraint[i]->B_localpos() = gaitParam.abcEETargetPose[i];
     this->ikEEPositionConstraint[i]->maxError() << 10.0*dt, 10.0*dt, 10.0*dt, 10.0*dt, 10.0*dt, 10.0*dt;
