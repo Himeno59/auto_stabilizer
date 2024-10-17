@@ -40,6 +40,8 @@ AutoStabilizer::Ports::Ports() :
   // 追加 ([port-name], ?)
   m_dqOut_("dq", m_dq_), 
   m_ddqOut_("ddq", m_ddq_),
+  m_rarm_actPointOut_("rarm_actPoint", m_rarm_actPoint_),
+  m_rarm_actOrientationOut_("rarm_actOrientation", m_rarm_actOrientation_),
   
   m_genTauOut_("genTauOut", m_genTau_),
   m_genBasePoseOut_("genBasePoseOut", m_genBasePose_),
@@ -95,6 +97,8 @@ RTC::ReturnCode_t AutoStabilizer::onInitialize(){
   //追加
   this->addOutPort("dq", this->ports_.m_dqOut_);
   this->addOutPort("ddq", this->ports_.m_ddqOut_);
+  this->addOutPort("rarm_actPoint", this->ports_.m_rarm_actPointOut_);
+  this->addOutPort("rarm_actOrientation", this->ports_.m_rarm_actOrientationOut_);
   
   this->addOutPort("genTauOut", this->ports_.m_genTauOut_);
   this->addOutPort("genBasePoseOut", this->ports_.m_genBasePoseOut_);
@@ -411,14 +415,14 @@ bool AutoStabilizer::readInPortData(const double& dt, const GaitParam& gaitParam
     if(ports.m_refEEPoseIn_[i]->isNew()){
       ports.m_refEEPoseIn_[i]->read();
       if(std::isfinite(ports.m_refEEPose_[i].data.position.x) && std::isfinite(ports.m_refEEPose_[i].data.position.y) && std::isfinite(ports.m_refEEPose_[i].data.position.z)
-	 && std::isfinite(ports.m_refEEPose_[i].data.orientation.r) && std::isfinite(ports.m_refEEPose_[i].data.orientation.p) && std::isfinite(ports.m_refEEPose_[i].data.orientation.y)){
-	cnoid::Position pose;
+         && std::isfinite(ports.m_refEEPose_[i].data.orientation.r) && std::isfinite(ports.m_refEEPose_[i].data.orientation.p) && std::isfinite(ports.m_refEEPose_[i].data.orientation.y)){
+        cnoid::Position pose;
         pose.translation()[0] = ports.m_refEEPose_[i].data.position.x;
         pose.translation()[1] = ports.m_refEEPose_[i].data.position.y;
         pose.translation()[2] = ports.m_refEEPose_[i].data.position.z;
         pose.linear() = cnoid::rotFromRpy(ports.m_refEEPose_[i].data.orientation.r, ports.m_refEEPose_[i].data.orientation.p, ports.m_refEEPose_[i].data.orientation.y);
         // refEEPoseRaw[i].setGoal(pose, 0.3); // 0.3秒で補間
-	refEEPoseRaw[i] = pose; // ここで代入
+        refEEPoseRaw[i] = pose; // ここで代入
         ports.refEEPoseLastUpdateTime_ = ports.m_qRef_.tm;
       } else {
         std::cerr << "m_refEEPose is not finite!" << std::endl;
@@ -893,6 +897,22 @@ bool AutoStabilizer::writeOutPortData(AutoStabilizer::Ports& ports, const AutoSt
       ports.m_actEEPose_[i].data.orientation.y = rpy[2];
       ports.m_actEEPoseOut_[i]->write();
     }
+
+    // for log
+    cnoid::Position rarm_position = gaitParam.genRobot->link("RARM_JOINT6")->T();
+    ports.m_rarm_actPoint_.tm = ports.m_qRef_.tm;
+    ports.m_rarm_actPoint_.data.x = rarm_position.translation()[0];
+    ports.m_rarm_actPoint_.data.y = rarm_position.translation()[1];
+    ports.m_rarm_actPoint_.data.z = rarm_position.translation()[2];
+    ports.m_rarm_actPointOut_.write();
+
+    ports.m_rarm_actOrientation_.tm = ports.m_qRef_.tm;
+    cnoid::Vector3 rpy = cnoid::rpyFromRot(rarm_position.linear());
+    ports.m_rarm_actOrientation_.data.r = rpy[0];
+    ports.m_rarm_actOrientation_.data.p = rpy[1];
+    ports.m_rarm_actOrientation_.data.y = rpy[2];
+    ports.m_rarm_actOrientationOut_.write();
+
     for(int i=0;i<gaitParam.eeName.size();i++){
       ports.m_actEEWrench_[i].tm = ports.m_qRef_.tm;
       ports.m_actEEWrench_[i].data.length(6);
@@ -1272,6 +1292,7 @@ bool AutoStabilizer::startWholeBodyMasterSlave(void){
     return false;
   }
 }
+
 bool AutoStabilizer::stopWholeBodyMasterSlave(void){
   std::lock_guard<std::mutex> guard(this->mutex_);
   if(this->mode_.isABCRunning()){
