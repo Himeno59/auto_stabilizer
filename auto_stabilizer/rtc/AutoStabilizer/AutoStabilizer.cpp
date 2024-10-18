@@ -40,8 +40,10 @@ AutoStabilizer::Ports::Ports() :
   // 追加 ([port-name], ?)
   m_dqOut_("dq", m_dq_), 
   m_ddqOut_("ddq", m_ddq_),
-  m_rarm_actPointOut_("rarm_actPoint", m_rarm_actPoint_),
-  m_rarm_actOrientationOut_("rarm_actOrientation", m_rarm_actOrientation_),
+  m_rarmPointOut_("rarmPoint", m_rarmPoint_),
+  m_rarmOrientationOut_("rarmOrientation", m_rarmOrientation_),
+  m_larmPointOut_("larmPoint", m_larmPoint_),
+  m_larmOrientationOut_("larmOrientation", m_larmOrientation_),
   
   m_genTauOut_("genTauOut", m_genTau_),
   m_genBasePoseOut_("genBasePoseOut", m_genBasePose_),
@@ -97,8 +99,10 @@ RTC::ReturnCode_t AutoStabilizer::onInitialize(){
   //追加
   this->addOutPort("dq", this->ports_.m_dqOut_);
   this->addOutPort("ddq", this->ports_.m_ddqOut_);
-  this->addOutPort("rarm_actPoint", this->ports_.m_rarm_actPointOut_);
-  this->addOutPort("rarm_actOrientation", this->ports_.m_rarm_actOrientationOut_);
+  this->addOutPort("rarmPoint", this->ports_.m_rarmPointOut_);
+  this->addOutPort("rarmOrientation", this->ports_.m_rarmOrientationOut_);
+  this->addOutPort("larmPoint", this->ports_.m_larmPointOut_);
+  this->addOutPort("larmOrientation", this->ports_.m_larmOrientationOut_);
   
   this->addOutPort("genTauOut", this->ports_.m_genTauOut_);
   this->addOutPort("genBasePoseOut", this->ports_.m_genBasePoseOut_);
@@ -898,21 +902,6 @@ bool AutoStabilizer::writeOutPortData(AutoStabilizer::Ports& ports, const AutoSt
       ports.m_actEEPoseOut_[i]->write();
     }
 
-    // for log
-    cnoid::Position rarm_position = gaitParam.genRobot->link("RARM_JOINT6")->T();
-    ports.m_rarm_actPoint_.tm = ports.m_qRef_.tm;
-    ports.m_rarm_actPoint_.data.x = rarm_position.translation()[0];
-    ports.m_rarm_actPoint_.data.y = rarm_position.translation()[1];
-    ports.m_rarm_actPoint_.data.z = rarm_position.translation()[2];
-    ports.m_rarm_actPointOut_.write();
-
-    ports.m_rarm_actOrientation_.tm = ports.m_qRef_.tm;
-    cnoid::Vector3 rpy = cnoid::rpyFromRot(rarm_position.linear());
-    ports.m_rarm_actOrientation_.data.r = rpy[0];
-    ports.m_rarm_actOrientation_.data.p = rpy[1];
-    ports.m_rarm_actOrientation_.data.y = rpy[2];
-    ports.m_rarm_actOrientationOut_.write();
-
     for(int i=0;i<gaitParam.eeName.size();i++){
       ports.m_actEEWrench_[i].tm = ports.m_qRef_.tm;
       ports.m_actEEWrench_[i].data.length(6);
@@ -920,6 +909,37 @@ bool AutoStabilizer::writeOutPortData(AutoStabilizer::Ports& ports, const AutoSt
       ports.m_actEEWrenchOut_[i]->write();
     }
   }
+
+  // ik target for log
+  if(mode.isABCRunning()){
+    cnoid::Position rarm_position = gaitParam.genRobot->link("RARM_JOINT6")->T();
+    ports.m_rarmPoint_.tm = ports.m_qRef_.tm;
+    ports.m_rarmPoint_.data.x = rarm_position.translation()[0];
+    ports.m_rarmPoint_.data.y = rarm_position.translation()[1];
+    ports.m_rarmPoint_.data.z = rarm_position.translation()[2];
+    ports.m_rarmPointOut_.write();
+    
+    ports.m_rarmOrientation_.tm = ports.m_qRef_.tm;
+    cnoid::Vector3 rpy1 = cnoid::rpyFromRot(rarm_position.linear());
+    ports.m_rarmOrientation_.data.r = rpy1[0];
+    ports.m_rarmOrientation_.data.p = rpy1[1];
+    ports.m_rarmOrientation_.data.y = rpy1[2];
+    ports.m_rarmOrientationOut_.write();
+    
+    cnoid::Position larm_position = gaitParam.genRobot->link("LARM_JOINT6")->T();
+    ports.m_larmPoint_.tm = ports.m_qRef_.tm;
+    ports.m_larmPoint_.data.x = larm_position.translation()[0];
+    ports.m_larmPoint_.data.y = larm_position.translation()[1];
+    ports.m_larmPoint_.data.z = larm_position.translation()[2];
+    ports.m_larmPointOut_.write();
+    
+    ports.m_larmOrientation_.tm = ports.m_qRef_.tm;
+    cnoid::Vector3 rpy2 = cnoid::rpyFromRot(larm_position.linear());
+    ports.m_larmOrientation_.data.r = rpy2[0];
+    ports.m_larmOrientation_.data.p = rpy2[1];
+    ports.m_larmOrientation_.data.y = rpy2[2];
+    ports.m_larmOrientationOut_.write();
+  } 
 
   // only for logger. (IDLE時の出力や、モード遷移時の連続性はてきとうで良い)
   if(mode.isABCRunning()){

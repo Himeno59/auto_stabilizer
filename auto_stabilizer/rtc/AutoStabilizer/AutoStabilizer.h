@@ -128,10 +128,15 @@ protected:
     RTC::TimedDoubleSeq m_ddq_;
     RTC::OutPort<RTC::TimedDoubleSeq> m_ddqOut_;
     
-    RTC::TimedPoint3D m_rarm_actPoint_;    
-    RTC::OutPort<RTC::TimedPoint3D> m_rarm_actPointOut_;
-    RTC::TimedOrientation3D m_rarm_actOrientation_;
-    RTC::OutPort<RTC::TimedOrientation3D> m_rarm_actOrientationOut_; 
+    RTC::TimedPoint3D m_rarmPoint_;    
+    RTC::OutPort<RTC::TimedPoint3D> m_rarmPointOut_;
+    RTC::TimedOrientation3D m_rarmOrientation_;
+    RTC::OutPort<RTC::TimedOrientation3D> m_rarmOrientationOut_;
+
+    RTC::TimedPoint3D m_larmPoint_;    
+    RTC::OutPort<RTC::TimedPoint3D> m_larmPointOut_;
+    RTC::TimedOrientation3D m_larmOrientation_;
+    RTC::OutPort<RTC::TimedOrientation3D> m_larmOrientationOut_; 
     
     RTC::TimedDoubleSeq m_genTau_;
     RTC::OutPort<RTC::TimedDoubleSeq> m_genTauOut_;
