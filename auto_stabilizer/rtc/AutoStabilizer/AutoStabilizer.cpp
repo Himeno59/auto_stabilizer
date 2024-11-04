@@ -921,9 +921,9 @@ bool AutoStabilizer::writeOutPortData(AutoStabilizer::Ports& ports, const AutoSt
     
     ports.m_rarmOrientation_.tm = ports.m_qRef_.tm;
     cnoid::Vector3 rpy1 = cnoid::rpyFromRot(rarm_position.linear());
-    ports.m_rarmOrientation_.data.r = rpy1[0];
-    ports.m_rarmOrientation_.data.p = rpy1[1];
-    ports.m_rarmOrientation_.data.y = rpy1[2];
+    ports.m_rarmOrientation_.data.r = rpy1[1] + M_PI/2.0;
+    ports.m_rarmOrientation_.data.p = M_PI/2.0 - rpy1[1];
+    ports.m_rarmOrientation_.data.y = rpy1[2] + M_PI/2.0;
     ports.m_rarmOrientationOut_.write();
     
     cnoid::Position larm_position = gaitParam.genRobot->link("LARM_JOINT6")->T();
@@ -935,9 +935,9 @@ bool AutoStabilizer::writeOutPortData(AutoStabilizer::Ports& ports, const AutoSt
     
     ports.m_larmOrientation_.tm = ports.m_qRef_.tm;
     cnoid::Vector3 rpy2 = cnoid::rpyFromRot(larm_position.linear());
-    ports.m_larmOrientation_.data.r = rpy2[0];
-    ports.m_larmOrientation_.data.p = rpy2[1];
-    ports.m_larmOrientation_.data.y = rpy2[2];
+    ports.m_larmOrientation_.data.r = rpy2[1] + M_PI/2.0; 
+    ports.m_larmOrientation_.data.p = M_PI/2.0 - rpy2[0];
+    ports.m_larmOrientation_.data.y = rpy2[2] + M_PI/2.0;
     ports.m_larmOrientationOut_.write();
   } 
 
