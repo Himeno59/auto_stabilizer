@@ -157,6 +157,8 @@ public:
   // FullbodyIKSolver
   cnoid::BodyPtr genRobot; // output. 関節位置制御用
 
+  cnoid::BodyPtr filtered_genRobot; // add
+
   // for debug data
   class DebugData {
   public:
@@ -190,6 +192,7 @@ public:
     actRobotTqc->calcForwardKinematics(); actRobotTqc->calcCenterOfMass();
     genRobot = robot->clone();
     genRobot->calcForwardKinematics(); genRobot->calcCenterOfMass();
+    filtered_genRobot = robot->clone();
   }
 
   void push_backEE(const std::string& name_, const std::string& parentLink_, const cnoid::Position& localT_){

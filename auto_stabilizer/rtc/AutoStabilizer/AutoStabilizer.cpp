@@ -36,9 +36,12 @@ AutoStabilizer::Ports::Ports() :
   m_landingHeightIn_("landingHeightIn", m_landingHeight_),
 
   m_qOut_("q", m_q_),
+  m_filtered_qOut_("filtered_q", m_filtered_q_),
 
   // 追加 ([port-name], ?)
-  m_dqOut_("dq", m_dq_), 
+  m_dqOut_("dq", m_dq_),
+  m_filtered_dqOut_("filtered_dq", m_filtered_dq_),
+  
   m_ddqOut_("ddq", m_ddq_),
   m_rarmPointOut_("rarmPoint", m_rarmPoint_),
   m_rarmOrientationOut_("rarmOrientation", m_rarmOrientation_),
@@ -96,8 +99,12 @@ RTC::ReturnCode_t AutoStabilizer::onInitialize(){
   this->addInPort("landingHeightIn", this->ports_.m_landingHeightIn_);
   
   this->addOutPort("q", this->ports_.m_qOut_);
+  this->addOutPort("filtered_q", this->ports_.m_filtered_qOut_);
+  
   //追加
   this->addOutPort("dq", this->ports_.m_dqOut_);
+  this->addOutPort("filtered_dq", this->ports_.m_filtered_dqOut_);
+  
   this->addOutPort("ddq", this->ports_.m_ddqOut_);
   this->addOutPort("rarmPoint", this->ports_.m_rarmPointOut_);
   this->addOutPort("rarmOrientation", this->ports_.m_rarmOrientationOut_);
@@ -662,10 +669,15 @@ bool AutoStabilizer::execAutoStabilizer(const AutoStabilizer::ControlMode& mode,
                                    gaitParam.genRobot); // output
 
   // Filter
-  // genRobotのqとdqにfilteerをかける
+  // dqは下のrtcに送っているわけではないので、filterをかけるならgenRobotのdqにかけないといけない?
   smoothingFilter.applyAverageFilter(gaitParam.genRobot);  // for q
   smoothingFilter.applyMedianFilter(gaitParam.genRobot);   // for dq
+  gaitParam.filtered_genRobot = gaitParam.genRobot->clone();
 
+  // gaitParam.filtered_genRobot = gaitParam.genRobot->clone();
+  // smoothingFilter.applyAverageFilter(gaitParam.filtered_genRobot);  // for q
+  // smoothingFilter.applyMedianFilter(gaitParam.filtered_genRobot);   // for dq
+  
   return true;
 }
 
@@ -706,6 +718,28 @@ bool AutoStabilizer::writeOutPortData(AutoStabilizer::Ports& ports, const AutoSt
       }
     }
     ports.m_qOut_.write();
+
+    // filtered_q
+    ports.m_filtered_q_.tm = ports.m_qRef_.tm;
+    ports.m_filtered_q_.data.length(gaitParam.genRobot->numJoints());
+    for(int i=0;i<gaitParam.filtered_genRobot->numJoints();i++){
+      if(mode.now() == AutoStabilizer::ControlMode::MODE_IDLE || !gaitParam.jointControllable[i]){
+        double value = gaitParam.refRobotRaw->joint(i)->q();
+        if(std::isfinite(value)) ports.m_filtered_q_.data[i] = value;
+        else std::cerr << "m_filtered_q is not finite!" << std::endl;
+      }else if(mode.isSyncToABC() || mode.isSyncToIdle()){
+        double ratio = idleToAbcTransitionInterpolator.value();
+        double value = gaitParam.refRobotRaw->joint(i)->q() * (1.0 - ratio) + gaitParam.filtered_genRobot->joint(i)->q() * ratio;
+        if(std::isfinite(value)) ports.m_filtered_q_.data[i] = value;
+        else std::cerr << "m_filtered_q is not finite!" << std::endl;
+      }else{
+        double value = gaitParam.filtered_genRobot->joint(i)->q();
+        if(std::isfinite(value)) ports.m_filtered_q_.data[i] = value;
+        else std::cerr << "m_filtered_q is not finite!" << std::endl;
+      }
+    }
+    ports.m_filtered_qOut_.write();
+    
   }
 
   {
@@ -729,6 +763,27 @@ bool AutoStabilizer::writeOutPortData(AutoStabilizer::Ports& ports, const AutoSt
       }
     }
     ports.m_dqOut_.write();
+
+    // filtered_dq
+    ports.m_filtered_dq_.tm = ports.m_qRef_.tm;
+    ports.m_filtered_dq_.data.length(gaitParam.genRobot->numJoints());
+    for(int i=0;i<gaitParam.genRobot->numJoints();i++){
+      if(mode.now() == AutoStabilizer::ControlMode::MODE_IDLE || !gaitParam.jointControllable[i]){
+        double value = gaitParam.refRobotRaw->joint(i)->dq(); // jointControllable = falseのときここでrefの値で上書く
+        if(std::isfinite(value)) ports.m_filtered_dq_.data[i] = value;
+        else std::cerr << "m_filtered_dq is not finite!" << std::endl;
+      }else if(mode.isSyncToABC() || mode.isSyncToIdle()){
+        double ratio = idleToAbcTransitionInterpolator.value(); // 補間??
+        double value = gaitParam.refRobotRaw->joint(i)->dq() * (1.0 - ratio) + gaitParam.filtered_genRobot->joint(i)->dq() * ratio;
+        if(std::isfinite(value)) ports.m_filtered_dq_.data[i] = value;
+        else std::cerr << "m_filtered_dq is not finite!" << std::endl;
+      }else{
+        double value = gaitParam.filtered_genRobot->joint(i)->dq(); // 通常はgenRobotの値を与える
+        if(std::isfinite(value)) ports.m_filtered_dq_.data[i] = value;
+        else std::cerr << "m_filtered_dq is not finite!" << std::endl;
+      }
+    }
+    ports.m_filtered_dqOut_.write();
   }
   
   {

@@ -121,10 +121,15 @@ protected:
     // OutPortの設定:10
     RTC::TimedDoubleSeq m_q_;
     RTC::OutPort<RTC::TimedDoubleSeq> m_qOut_;
+    RTC::TimedDoubleSeq m_filtered_q_;
+    RTC::OutPort<RTC::TimedDoubleSeq> m_filtered_qOut_;
 
     // 追加
     RTC::TimedDoubleSeq m_dq_;
     RTC::OutPort<RTC::TimedDoubleSeq> m_dqOut_;
+    RTC::TimedDoubleSeq m_filtered_dq_;
+    RTC::OutPort<RTC::TimedDoubleSeq> m_filtered_dqOut_;
+    
     RTC::TimedDoubleSeq m_ddq_;
     RTC::OutPort<RTC::TimedDoubleSeq> m_ddqOut_;
     
