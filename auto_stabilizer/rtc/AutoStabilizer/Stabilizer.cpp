@@ -1,8 +1,12 @@
 #include "Stabilizer.h"
 #include "MathUtil.h"
+#include <numeric>
 #include <cnoid/Jacobian>
 #include <cnoid/EigenUtil>
 #include <cnoid/src/Body/InverseDynamics.h>
+
+#include "algorithm"
+#define deg2rad(x) ((x) * M_PI / 180.0)
 
 void Stabilizer::initStabilizerOutput(const GaitParam& gaitParam,
                                       cpp_filters::TwoPointInterpolator<cnoid::Vector3>& o_stOffsetRootRpy, cnoid::Vector3& o_stTargetZmp, std::vector<cpp_filters::TwoPointInterpolator<double> >& o_stServoPGainPercentage, std::vector<cpp_filters::TwoPointInterpolator<double> >& o_stServoDGainPercentage) const{
@@ -302,6 +306,19 @@ double Stabilizer::applyMedianFilter(int i, double val, std::vector<std::vector<
   }
 }
 
+double Stabilizer::applyAverageFilter(int i, double val, std::vector<std::vector<double>>& average_filter_window) const{
+  average_filter_window[i].push_back(val);
+
+  if (average_filter_window[i].size() > max_window_size) {
+    average_filter_window[i].erase(average_filter_window[i].begin());
+  }
+
+  double sum = std::accumulate(average_filter_window[i].begin(), average_filter_window[i].end(), 0.0);
+  double result = sum / average_filter_window[i].size();
+  
+  return result;
+}
+
 bool Stabilizer::calcTorque(double dt, const GaitParam& gaitParam, const std::vector<cnoid::Vector6>& tgtEEWrench /* 要素数EndEffector数. generate座標系. EndEffector origin*/,
                             cnoid::BodyPtr& actRobotTqc, std::vector<cpp_filters::TwoPointInterpolator<double> >& o_stServoPGainPercentage, std::vector<cpp_filters::TwoPointInterpolator<double> >& o_stServoDGainPercentage) const{
   // 速度・加速度を考慮しない重力補償
@@ -315,25 +332,31 @@ bool Stabilizer::calcTorque(double dt, const GaitParam& gaitParam, const std::ve
   // １つ前の周期の関節角度、関節角速度を保持
   static std::vector<double> prev_dq(actRobotTqc->numJoints()); // 0で初期化
   static bool initialize = true;
+  
   for(int i=0;i<actRobotTqc->numJoints();i++){
     actRobotTqc->joint(i)->q() = gaitParam.actRobot->joint(i)->q();
-    
     // actRobotTqc->joint(i)->dq() = 0.0;
+    // actRobotTqc->joint(i)->ddq() = 0.0;
+    
     // double current_dq = gaitParam.actRobot->joint(i)->dq();
     // actRobotTqc->joint(i)->dq() = applyMedianFilter(i, current_dq, vel_median_filter_window);
+    
     actRobotTqc->joint(i)->dq() = gaitParam.actRobot->joint(i)->dq();
     
-    // actRobotTqc->joint(i)->ddq() = 0.0;    
     if (initialize) {
       actRobotTqc->joint(i)->ddq() = 0.0;
     } else {
-      double current_ddq = (gaitParam.genRobot->joint(i)->dq() - prev_dq[i]) / dt;
-      actRobotTqc->joint(i)->ddq() = applyMedianFilter(i, current_ddq, acc_median_filter_window);
+      // double current_ddq = std::max(deg2rad(-6000.0), std::min((gaitParam.genRobot->joint(i)->dq() - prev_dq[i])/dt, deg2rad(6000.0))); // 6000で切る
+      double current_ddq = std::max(deg2rad(-6000.0), std::min((gaitParam.filtered_genRobot->joint(i)->dq() - prev_dq[i])/dt, deg2rad(6000.0))); // 6000で切る
+      
+      // actRobotTqc->joint(i)->ddq() = applyMedianFilter(i, current_ddq, acc_median_filter_window);
+      actRobotTqc->joint(i)->ddq() = applyAverageFilter(i, current_ddq, acc_average_filter_window);
       // actRobotTqc->joint(i)->ddq() = (gaitParam.genRobot->joint(i)->dq() - prev_dq[i]) / dt;
+
     }
     
-    prev_dq[i] = gaitParam.genRobot->joint(i)->dq();
-    
+    // prev_dq[i] = gaitParam.genRobot->joint(i)->dq();
+    prev_dq[i] = gaitParam.filtered_genRobot->joint(i)->dq();
   }
   initialize = false;
   actRobotTqc->calcForwardKinematics(true, true); // 引数は速度と加速度を更新するかどうか

@@ -51,6 +51,7 @@ public:
         swingDgain[i].resize(jointPath.numJoints(), 100.0);
       }
     }
+
   }
 protected:
   // 計算高速化のためのキャッシュ. クリアしなくても別に副作用はない.
@@ -75,13 +76,15 @@ protected:
                   cnoid::BodyPtr& actRobotTqc, std::vector<cpp_filters::TwoPointInterpolator<double> >& o_stServoPGainPercentage, std::vector<cpp_filters::TwoPointInterpolator<double> >& o_stServoDGainPercentage) const;
   
   double applyMedianFilter(int i, double val, std::vector<std::vector<double>>& median_filter_window) const;
+  double applyAverageFilter(int i, double val, std::vector<std::vector<double>>& average_filter_window) const;
   
 private:
-  // median filter
-  double max_window_size = 5;
+  // filter
+  double max_window_size = 3;
   mutable std::vector<std::vector<double> > acc_median_filter_window = std::vector<std::vector<double> >(45);
   mutable std::vector<std::vector<double> > vel_median_filter_window = std::vector<std::vector<double> >(45);
 
+  mutable std::vector<std::vector<double> > acc_average_filter_window = std::vector<std::vector<double> >(45);
 };
 
 
