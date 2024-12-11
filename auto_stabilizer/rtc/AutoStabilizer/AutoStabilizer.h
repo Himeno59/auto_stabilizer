@@ -108,6 +108,8 @@ protected:
     // basketball_motion_controllerからつなげる
     std::vector<RTC::TimedPose3D> m_refEEPose_; // Reference World frame. 要素数及び順番はgaitParam_.eeNameと同じ
     std::vector<std::unique_ptr<RTC::InPort<RTC::TimedPose3D> > > m_refEEPoseIn_;
+    RTC::TimedDouble m_headYawAngle_;
+    RTC::InPort<RTC::TimedDouble> m_headYawAngleIn_;
     
     RTC::Time refEEPoseLastUpdateTime_; // m_refEEPoseIn_のどれかに最後にdataが届いたときの、m_qRef_.tmの時刻
     collision_checker_msgs::TimedCollisionSeq m_selfCollision_; // generate frame. genRobotの自己干渉の最近傍点
@@ -298,7 +300,7 @@ protected:
   Stabilizer stabilizer_;
   FullbodyIKSolver fullbodyIKSolver_;
   SmoothingFilter smoothingFilter_;
-
+  
 protected:
   // utility functions
   bool getProperty(const std::string& key, std::string& ret);

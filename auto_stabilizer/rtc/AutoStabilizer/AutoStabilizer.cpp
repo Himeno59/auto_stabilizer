@@ -35,18 +35,21 @@ AutoStabilizer::Ports::Ports() :
   m_steppableRegionIn_("steppableRegionIn", m_steppableRegion_),
   m_landingHeightIn_("landingHeightIn", m_landingHeight_),
 
+  // add
+  m_headYawAngleIn_("headYawAngleIn", m_headYawAngle_),
+
   m_qOut_("q", m_q_),
   m_filtered_qOut_("filtered_q", m_filtered_q_),
 
   // 追加 ([port-name], ?)
   m_dqOut_("dq", m_dq_),
-  m_filtered_dqOut_("filtered_dq", m_filtered_dq_),
-  
+  m_filtered_dqOut_("filtered_dq", m_filtered_dq_),  
   m_ddqOut_("ddq", m_ddq_),
   m_rarmPointOut_("rarmPoint", m_rarmPoint_),
   m_rarmOrientationOut_("rarmOrientation", m_rarmOrientation_),
   m_larmPointOut_("larmPoint", m_larmPoint_),
   m_larmOrientationOut_("larmOrientation", m_larmOrientation_),
+  
   
   m_genTauOut_("genTauOut", m_genTau_),
   m_genBasePoseOut_("genBasePoseOut", m_genBasePose_),
@@ -97,6 +100,7 @@ RTC::ReturnCode_t AutoStabilizer::onInitialize(){
   this->addInPort("selfCollisionIn", this->ports_.m_selfCollisionIn_);
   this->addInPort("steppableRegionIn", this->ports_.m_steppableRegionIn_);
   this->addInPort("landingHeightIn", this->ports_.m_landingHeightIn_);
+  this->addInPort("headYawAngleIn", this->ports_.m_headYawAngleIn_);
   
   this->addOutPort("q", this->ports_.m_qOut_);
   this->addOutPort("filtered_q", this->ports_.m_filtered_qOut_);
@@ -378,6 +382,10 @@ bool AutoStabilizer::readInPortData(const double& dt, const GaitParam& gaitParam
       qRef_updated = true;
     }
   }
+
+  // add
+  if(ports.m_headYawAngleIn_.isNew()) ports.m_headYawAngleIn_.read();
+  
   if(ports.m_refTauIn_.isNew()){
     ports.m_refTauIn_.read();
     if(ports.m_refTau_.data.length() == refRobotRaw->numJoints()){
@@ -698,6 +706,11 @@ bool AutoStabilizer::writeOutPortData(AutoStabilizer::Ports& ports, const AutoSt
   }
 
   {
+    // update head-yaw-angle
+    // genRobotのhead-yaw->joint(15)をBasketballMotionController.rtcのhead_yaw_angleで上書く
+    double value = ports.m_headYawAngle_.data;
+    if(std::isfinite(value)) gaitParam.genRobot->joint(15)->q() = value;
+    
     // q
     ports.m_q_.tm = ports.m_qRef_.tm;
     ports.m_q_.data.length(gaitParam.genRobot->numJoints());
@@ -976,9 +989,9 @@ bool AutoStabilizer::writeOutPortData(AutoStabilizer::Ports& ports, const AutoSt
     
     ports.m_rarmOrientation_.tm = ports.m_qRef_.tm;
     cnoid::Vector3 rpy1 = cnoid::rpyFromRot(rarm_position.linear());
-    ports.m_rarmOrientation_.data.r = rpy1[1] + M_PI/2.0;
-    ports.m_rarmOrientation_.data.p = M_PI/2.0 - rpy1[1];
-    ports.m_rarmOrientation_.data.y = rpy1[2] + M_PI/2.0;
+    ports.m_rarmOrientation_.data.r = -M_PI/2.0 - rpy1[1];
+    ports.m_rarmOrientation_.data.p = M_PI/2.0 + rpy1[0];
+    ports.m_rarmOrientation_.data.y = rpy1[2] - M_PI/2.0;
     ports.m_rarmOrientationOut_.write();
     
     cnoid::Position larm_position = gaitParam.genRobot->link("LARM_JOINT6")->T();
