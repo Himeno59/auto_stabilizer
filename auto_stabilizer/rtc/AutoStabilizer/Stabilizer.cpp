@@ -335,26 +335,26 @@ bool Stabilizer::calcTorque(double dt, const GaitParam& gaitParam, const std::ve
   
   for(int i=0;i<actRobotTqc->numJoints();i++){
     actRobotTqc->joint(i)->q() = gaitParam.actRobot->joint(i)->q();
-    // actRobotTqc->joint(i)->dq() = 0.0;
-    // actRobotTqc->joint(i)->ddq() = 0.0;
-    
-    // double current_dq = gaitParam.actRobot->joint(i)->dq();
-    // actRobotTqc->joint(i)->dq() = applyMedianFilter(i, current_dq, vel_median_filter_window);
-    
-    actRobotTqc->joint(i)->dq() = gaitParam.actRobot->joint(i)->dq();
-    
-    if (initialize) {
+    if (i<17) { // 腕以外
+      actRobotTqc->joint(i)->dq() = 0.0;
       actRobotTqc->joint(i)->ddq() = 0.0;
-    } else {
-      // double current_ddq = std::max(deg2rad(-6000.0), std::min((gaitParam.genRobot->joint(i)->dq() - prev_dq[i])/dt, deg2rad(6000.0))); // 6000で切る
-      double current_ddq = std::max(deg2rad(-6000.0), std::min((gaitParam.filtered_genRobot->joint(i)->dq() - prev_dq[i])/dt, deg2rad(6000.0))); // 6000で切る
+    } else { // 腕
+      // double current_dq = gaitParam.actRobot->joint(i)->dq();
+      // actRobotTqc->joint(i)->dq() = applyMedianFilter(i, current_dq, vel_median_filter_window);
       
-      // actRobotTqc->joint(i)->ddq() = applyMedianFilter(i, current_ddq, acc_median_filter_window);
-      actRobotTqc->joint(i)->ddq() = applyAverageFilter(i, current_ddq, acc_average_filter_window);
-      // actRobotTqc->joint(i)->ddq() = (gaitParam.genRobot->joint(i)->dq() - prev_dq[i]) / dt;
+      actRobotTqc->joint(i)->dq() = gaitParam.actRobot->joint(i)->dq();
+      
+      if (initialize) {
+        actRobotTqc->joint(i)->ddq() = 0.0;
+      } else {
+        // double current_ddq = std::max(deg2rad(-6000.0), std::min((gaitParam.genRobot->joint(i)->dq() - prev_dq[i])/dt, deg2rad(6000.0))); // 6000で切る
+        double current_ddq = std::max(deg2rad(-6000.0), std::min((gaitParam.filtered_genRobot->joint(i)->dq() - prev_dq[i])/dt, deg2rad(6000.0))); // 6000で切る
 
+        actRobotTqc->joint(i)->ddq() = applyAverageFilter(i, current_ddq, acc_average_filter_window);
+        // actRobotTqc->joint(i)->ddq() = applyMedianFilter(i, current_ddq, acc_median_filter_window);
+        // actRobotTqc->joint(i)->ddq() = (gaitParam.genRobot->joint(i)->dq() - prev_dq[i]) / dt; 
+      } 
     }
-    
     // prev_dq[i] = gaitParam.genRobot->joint(i)->dq();
     prev_dq[i] = gaitParam.filtered_genRobot->joint(i)->dq();
   }
