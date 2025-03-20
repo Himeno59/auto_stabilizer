@@ -37,11 +37,8 @@ AutoStabilizer::Ports::Ports() :
 
   // add
   m_headYawAngleIn_("headYawAngleIn", m_headYawAngle_),
-
   m_qOut_("q", m_q_),
   m_filtered_qOut_("filtered_q", m_filtered_q_),
-
-  // 追加 ([port-name], ?)
   m_dqOut_("dq", m_dq_),
   m_filtered_dqOut_("filtered_dq", m_filtered_dq_),  
   m_ddqOut_("ddq", m_ddq_),
@@ -49,7 +46,6 @@ AutoStabilizer::Ports::Ports() :
   m_rarmOrientationOut_("rarmOrientation", m_rarmOrientation_),
   m_larmPointOut_("larmPoint", m_larmPoint_),
   m_larmOrientationOut_("larmOrientation", m_larmOrientation_),
-  
   
   m_genTauOut_("genTauOut", m_genTau_),
   m_genBasePoseOut_("genBasePoseOut", m_genBasePose_),
@@ -79,7 +75,7 @@ AutoStabilizer::Ports::Ports() :
   m_RobotHardwareServicePort_("RobotHardwareService"){
 }
 
-AutoStabilizer::AutoStabilizer(RTC::Manager* manager) : RTC::DataFlowComponentBase(manager), // 継承クラスのコンストラクタ
+AutoStabilizer::AutoStabilizer(RTC::Manager* manager) : RTC::DataFlowComponentBase(manager),
   ports_(),
   debugLevel_(0)
 {
@@ -89,7 +85,6 @@ AutoStabilizer::AutoStabilizer(RTC::Manager* manager) : RTC::DataFlowComponentBa
 RTC::ReturnCode_t AutoStabilizer::onInitialize(){
 
   // add ports
-  // ("ポート名", 変数名)
   this->addInPort("qRef", this->ports_.m_qRefIn_);
   this->addInPort("refTauIn", this->ports_.m_refTauIn_);
   this->addInPort("refBasePosIn", this->ports_.m_refBasePosIn_);
@@ -384,7 +379,7 @@ bool AutoStabilizer::readInPortData(const double& dt, const GaitParam& gaitParam
   }
 
   // add
-  if(ports.m_headYawAngleIn_.isNew()) ports.m_headYawAngleIn_.read();
+  // if(ports.m_headYawAngleIn_.isNew()) ports.m_headYawAngleIn_.read();
   
   if(ports.m_refTauIn_.isNew()){
     ports.m_refTauIn_.read();
@@ -429,7 +424,6 @@ bool AutoStabilizer::readInPortData(const double& dt, const GaitParam& gaitParam
   }
 
   // refEEPose
-  // fix: ここで補間されてしまっているので一旦消す
   for(int i=0;i<ports.m_refEEPoseIn_.size();i++){
     if(ports.m_refEEPoseIn_[i]->isNew()){
       ports.m_refEEPoseIn_[i]->read();
@@ -681,10 +675,6 @@ bool AutoStabilizer::execAutoStabilizer(const AutoStabilizer::ControlMode& mode,
   smoothingFilter.applyAverageFilter(gaitParam.genRobot);  // for q
   smoothingFilter.applyMedianFilter(gaitParam.genRobot);   // for dq
   gaitParam.filtered_genRobot = gaitParam.genRobot->clone();
-
-  // gaitParam.filtered_genRobot = gaitParam.genRobot->clone();
-  // smoothingFilter.applyAverageFilter(gaitParam.filtered_genRobot);  // for q
-  // smoothingFilter.applyMedianFilter(gaitParam.filtered_genRobot);   // for dq
   
   return true;
 }
@@ -708,8 +698,8 @@ bool AutoStabilizer::writeOutPortData(AutoStabilizer::Ports& ports, const AutoSt
   {
     // update head-yaw-angle
     // genRobotのhead-yaw->joint(15)をBasketballMotionController.rtcのhead_yaw_angleで上書く
-    double value = ports.m_headYawAngle_.data;
-    if(std::isfinite(value)) gaitParam.genRobot->joint(15)->q() = value;
+    // double value = ports.m_headYawAngle_.data;
+    // if(std::isfinite(value)) gaitParam.genRobot->joint(15)->q() = value;
     
     // q
     ports.m_q_.tm = ports.m_qRef_.tm;
