@@ -1362,7 +1362,7 @@ bool AutoStabilizer::startWholeBodyMasterSlave(void){
       std::cerr << "[" << this->m_profile.instance_name << "] Please start master side" << std::endl;
       return false;
     }
-    this->refToGenFrameConverter_.solveFKMode.setGoal(0.0, 5.0); // 5秒で遷移
+    this->refToGenFrameConverter_.solveFKMode.setGoal(0.0, 10.0); // 10秒で遷移
     std::cerr << "[" << this->m_profile.instance_name << "] Start WholeBodyMasterSlave" << std::endl;
     return true;
   }else{
